@@ -1,0 +1,94 @@
+head, html{
+    .split {
+        width: calc(50% - 20px);
+        margin: 10px;
+        box-sizing: border-box;
+    }
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.split {
+    height: 100%;
+    width: 50%;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    overflow-x: hidden;
+    padding-top: 20px;
+}
+
+.left {
+    left: 0;
+    background-color: #111;
+}
+
+.right {
+    right: 0;
+    background-color: #f8f8f8; 
+}
+.centered {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    width: 100%;
+    height: 100%;
+}
+
+#cesiumContainer {
+    width: 100%;
+    height: 100%;
+}
+
+#chart-container {
+    width: 100%;
+    height: 100%;
+}
+
+canvas {
+    width: 100%;
+    height: auto;
+}
+
+.legend {
+    border-radius: 5px;
+    position: absolute;
+    font-size: 12px;
+    bottom: 10px;
+    left: 20px;
+    background-color: rgba(255, 255, 255, 0.5);;
+    border: 1px solid #ccc;
+    padding: 0 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 9999999;
+    width: 550px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(2, auto);
+    gap: 0; /* Optional: Adds space between grid items */
+    height: 100px;
+    backdrop-filter: blur(5px);
+}
+
+.legend-item {
+    font-weight: bold;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    /* margin-bottom: 5px; */
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+}
+

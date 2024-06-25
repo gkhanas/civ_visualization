@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Building - Heat Demand</title>
+    <meta charset="utf-8">
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.80/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.80/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="building_data.js"></script>
+    <link rel="stylesheet" href="exercise.css">
+    <style>  
+    </style>
+</head>
+<body>
+    <div class="split left">
+        <div class="centered">
+            <div id="cesiumContainer"></div>
+        </div>
+    </div>
+
+    <div class="split right">
+        <div class="centered">
+            <div id="chart-container">
+                <canvas id="monthlyHeatChart"></canvas>
+                <canvas id="polarAreaChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="legend">
+        <h3>Energy Demand in Mwh/m².a </h3>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #d73027;"></div>
+            <span>> 200</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #f46d43;"></div>
+            <span>> 150</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #fdae61;"></div>
+            <span>> 125</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #fee08b;"></div>
+            <span>> 100</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #d9ef8b;"></div>
+            <span>> 75</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #a6d96a;"></div>
+            <span>> 50</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #66bd63;"></div>
+            <span>> 25</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #1a9850;"></div>
+            <span>> 0</span>
+        </div>
+    </div>
+
+    <script>
+        Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI1ZDE2NzIyNS1mMGE5LTRlMzgtOGZhYS1iODk4MTUyMDAxMTMiLCJpZCI6MjE3MzMxLCJpYXQiOjE3MTY0NzA1MTJ9.RBQJuesi6qINBnCn7V1pBVGxDhpWpZ1YGr8hY2-LTsw';
+        
+        var viewer = new Cesium.Viewer('cesiumContainer', {
+            imageryProvider: new Cesium.IonImageryProvider({ assetId: 3 }),
+            baseLayerPicker: false,
+            vrButton: true,
+            geocoder: false,
+            navigationHelpButton: false,
+            selectionIndicator: false,
+            shadows: true,
+            timeline: false,
+            sceneModePicker: true,
+        });
+
+        var tileset = viewer.scene.primitives.add(new Cesium.Cesium3DTileset({
+            url: "./tileset.json"
+        }));
+
+        tileset.style = new Cesium.Cesium3DTileStyle({
+            color: {
+                conditions: [
+                    ["Number(${Specific_s}) > 200", "color('#d73027')"],
+                    ["Number(${Specific_s}) > 150", "color('#f46d43')"],
+                    ["Number(${Specific_s}) > 125", "color('#fdae61')"],
+                    ["Number(${Specific_s}) > 100", "color('#fee08b')"],
+                    ["Number(${Specific_s}) > 75", "color('#d9ef8b')"],
+                    ["Number(${Specific_s}) > 50", "color('#a6d96a')"],
+                    ["Number(${Specific_s}) > 25", "color('#66bd63')"],
+                    ["Number(${Specific_s}) > 0", "color('#1a9850')"],
+                    ["true", "color('#FFEDA0')"]
+                ]
+            }
+        });
+
+        tileset.tileVisible.addEventListener(function (tile) {
+            var content = tile.content;
+            for (var i = 0; i < content.featuresLength; ++i) {
+                var feature = content.getFeature(i);
+                var specificS = feature.getProperty('Specific_s');
+                var yearOfConstruction = feature.getProperty('Year_of_co');
+                var popupContent = `
+                    <h2>${feature.getProperty('gml_id')}</h2>
+                    <p>Specific Space Heating Demand: ${specificS} [kWh/m².year]</p>
+                    <p>Year of Construction: ${yearOfConstruction}</p>
+                `;
+                console.log(popupContent);
+            }
+        });
+
+        Cesium.when(tileset.readyPromise).then(function (tileset) {
+            viewer.flyTo(tileset);
+        });
+
+        var buildingFeatures = building_data.features;
+        var months = [
+            "January_He", "February_H", "March_Heat", "April_Heat",
+            "May_Heatin", "June_Heati", "July_Heati", "August_Hea",
+            "September_", "October_He", "November_H", "December_H"
+        ];
+
+        var monthlySums = Array.from({ length: 12 }, () => 0);
+
+        buildingFeatures.forEach(function(feature) {
+            for (var i = 0; i < 12; i++) {
+                var monthKey = months[i];
+                monthlySums[i] += feature.properties[monthKey];
+            }
+        });
+
+        var ctx1 = document.getElementById('monthlyHeatChart').getContext('2d');
+        var monthlyHeatChart = new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Monthly Heating Demand',
+                    data: monthlySums,
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Monthly Heating Demand Across Buildings'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        stepSize: 15,
+                        title: {
+                            display: true,
+                            text: 'Heating Demand [kWh/m².year]'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Aggregating Specific_s values for each PrimaryUsa class
+        var primaryUsaClasses = {
+            'industry': 0,
+            'health care': 0,
+            'office and administration': 0,
+            'non-heated': 0,
+            'retail': 0,
+            'event location': 0,
+            'sport location': 0,
+            'hall': 0,
+            'education': 0
+        };
+
+        buildingFeatures.forEach(function(feature) {
+            var primaryUsa = feature.properties.PrimaryUsa;
+            var specificS = feature.properties.Specific_s;
+
+            if (primaryUsaClasses.hasOwnProperty(primaryUsa)) {
+                primaryUsaClasses[primaryUsa] += specificS;
+            }
+        });
+
+        var primaryUsaLabels = Object.keys(primaryUsaClasses);
+        var primaryUsaValues = Object.values(primaryUsaClasses);
+
+        // Define custom colors for each primary use class
+        var customColors = [
+            'rgba(228, 26, 28, 0.5)',   // #e41a1c
+            'rgba(55, 126, 184, 0.5)',  // #377eb8
+            'rgba(77, 175, 74, 0.5)',   // #4daf4a
+            'rgba(152, 78, 163, 0.5)',  // #984ea3
+            'rgba(255, 127, 0, 0.5)',   // #ff7f00
+            'rgba(255, 255, 51, 0.5)',  // #ffff33
+            'rgba(166, 86, 40, 0.5)',   // #a65628
+            'rgba(247, 129, 191, 0.5)', // #f781bf
+            'rgba(153, 153, 153, 0.5)'  // #999999
+        ];
+
+        var customBorderColors = [
+            'rgba(228, 26, 28, 1)',    // #e41a1c
+            'rgba(55, 126, 184, 1)',   // #377eb8
+            'rgba(77, 175, 74, 1)',    // #4daf4a
+            'rgba(152, 78, 163, 1)',   // #984ea3
+            'rgba(255, 127, 0, 1)',    // #ff7f00
+            'rgba(255, 255, 51, 1)',   // #ffff33
+            'rgba(166, 86, 40, 1)',    // #a65628
+            'rgba(247, 129, 191, 1)',  // #f781bf
+            'rgba(153, 153, 153, 1)'   // #999999
+        ];
+
+        var ctx2 = document.getElementById('polarAreaChart').getContext('2d');
+        var polarAreaChart = new Chart(ctx2, {
+            type: 'polarArea',
+            data: {
+                labels: primaryUsaLabels,
+                datasets: [{
+                    label: 'Heating Demand of Non-Residential Building Categories(kWh/m².year)',
+                    data: primaryUsaValues,
+                    backgroundColor: customColors.slice(0, primaryUsaLabels.length),
+                    borderColor: customBorderColors.slice(0, primaryUsaLabels.length),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Heating Demand of Non-Residential Building Categories(kWh/m².year)'
+                    }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Specific Space Heating Demand [kWh/m².year]'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
